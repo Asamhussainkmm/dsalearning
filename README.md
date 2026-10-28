@@ -24,7 +24,7 @@ Content: 39 lessons · 87 MCQs with Tanglish explanations · 33 short-answer que
 
 ## Features
 
-Dashboard · Learn (curriculum) · Lesson pages (analogy → Tanglish → English term → visual → code → line-by-line → expected output → quick check) · Visual Lab · Java Playground · Coding Practice (Run + Submit with test cases) · MCQ quizzes (topic or mixed, shuffled, review, retry missed) · Short answers (AI-assisted or keyword fallback) · Revision Centre (missed questions, timed practice, definitions) · Progress · Settings (theme, export/import JSON, reset).
+**DSA Buddy chatbot** (floating button on every page: answers student questions in Tanglish, knows which lesson is open) · Dashboard · Learn (curriculum) · Lesson pages (analogy → Tanglish → English term → visual → code → line-by-line → expected output → quick check) · Visual Lab · Java Playground · Coding Practice (Run + Submit with test cases) · MCQ quizzes (topic or mixed, shuffled, review, retry missed) · Short answers (AI-assisted or keyword fallback) · Revision Centre (missed questions, timed practice, definitions) · Progress · Settings (theme, export/import JSON, reset).
 
 There is **no login and no database**. Progress is stored in the browser's `localStorage` only.
 
@@ -70,7 +70,7 @@ The site will be at `https://<user>.github.io/<repo-name>/`.
 
 ## Short-answer AI feedback (Cloudflare Worker + Groq)
 
-AI feedback is optional. Without it, short answers use a deterministic keyword check and the UI says so.
+AI features are optional: short-answer feedback (`POST /evaluate`) and the DSA Buddy chatbot (`POST /chat`). Without a Worker URL, short answers use a deterministic keyword check and the chatbot shows that it is not enabled; nothing is faked.
 
 The browser never sees the Groq key. It calls a small Cloudflare Worker ([`worker/`](worker)), which holds the key as a **secret** and forwards a strictly validated request to Groq.
 
@@ -89,7 +89,7 @@ Wrangler prints the Worker URL (for example `https://dsa-ai-proxy.<subdomain>.wo
 
 For local Worker development create `worker/.dev.vars` (git-ignored) containing `GROQ_API_KEY=...` and run `npx wrangler dev`.
 
-What the Worker enforces: only `POST /evaluate`; origin allow-list; request body and field size limits; per-IP rate limit; fixed model (`GROQ_MODEL`, default `llama-3.3-70b-versatile`); the student's answer is passed as quoted data to resist prompt injection; the model must return a JSON object that is validated again before it is returned (and once more in the browser).
+What the Worker enforces: only `POST /evaluate` and `POST /chat` (separate per-IP rate limits; chat keeps at most 8 messages of 800 characters, replies are capped, the system prompt keeps answers in Tanglish, Java only, on-topic and treats student text as data); origin allow-list; request body and field size limits; per-IP rate limit; fixed model (`GROQ_MODEL`, default `llama-3.3-70b-versatile`); the student's answer is passed as quoted data to resist prompt injection; the model must return a JSON object that is validated again before it is returned (and once more in the browser).
 
 **Never** put the Groq key in any `VITE_*` variable, in `.env`, in source code or in a commit. Anything prefixed `VITE_` is compiled into the public JavaScript bundle.
 

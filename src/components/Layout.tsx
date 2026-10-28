@@ -4,6 +4,7 @@ import {
   BarChart3, BookOpen, Braces, Code2, FileQuestion, Home, Menu, Moon, PenLine, RefreshCcw, Settings, Sun, Telescope, X,
 } from 'lucide-react'
 import { useProgress } from '../state/ProgressContext'
+import { ChatBot } from './ChatBot'
 
 const nav = [
   { to: '/', label: 'Dashboard', icon: Home, end: true },
@@ -93,6 +94,8 @@ export function Layout() {
           Powered by <a href="https://asamhussain.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand underline underline-offset-2">Asam Hussain</a>
         </footer>
       </div>
+
+      <ChatBot />
 
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">

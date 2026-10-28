@@ -221,3 +221,17 @@ describe('content integrity', () => {
     expect(Math.max(...counts) / mcqs.length).toBeLessThan(0.6)
   })
 })
+
+import { splitReply } from '../src/lib/chat'
+
+describe('chatbot reply handling', () => {
+  it('separates fenced Java code from text and never keeps the fences', () => {
+    const parts = splitReply('Stack na LIFO.\n```java\nint x = 1;\n```\nIdhu simple.')
+    expect(parts.map((p) => p.code)).toEqual([false, true, false])
+    expect(parts[1].body).toBe('int x = 1;')
+  })
+  it('returns plain text unchanged and drops empty parts', () => {
+    expect(splitReply('hello')).toEqual([{ code: false, body: 'hello' }])
+    expect(splitReply('')).toEqual([])
+  })
+})
