@@ -1,0 +1,11 @@
+name = "dsa-ai-proxy"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[vars]
+# Comma-separated list of browser origins allowed to call the Worker.
+# Replace YOUR-GITHUB-USERNAME with your GitHub Pages user. Keep localhost for local dev.
+ALLOWED_ORIGINS = "https://YOUR-GITHUB-USERNAME.github.io,http://localhost:5173,http://localhost:4173"
+GROQ_MODEL = "llama-3.3-70b-versatile"
+
+# Secret (NOT stored here):  npx wrangler secret put GROQ_API_KEY

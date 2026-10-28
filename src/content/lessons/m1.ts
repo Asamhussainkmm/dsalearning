@@ -1,0 +1,81 @@
+import type { Lesson } from '../../types'
+
+export const m1: Lesson[] = [
+  {
+    id: 'm1-l1',
+    moduleId: 'm1',
+    title: 'What is a Data Structure? What is an Algorithm?',
+    minutes: 20,
+    objectives: ['Define data structure and algorithm in simple words', 'Tell the difference between them', 'Separate linear from non-linear structures'],
+    source: 'Lecture 2, Lecture 11, Assignment 1 Q1',
+    blocks: [
+      { t: 'analogy', title: 'Library & recipe', body: 'Oru library-la books-ai **shelves, categories, index** vachu arrange pannirupaanga. Appadi arrange pannaa thaan oru book-ai seekkiram kandupidikkalaam. Data-ai computer-la arrange panra murai thaan **data structure**.\n\nOru book-ai kandupidikka "A-la irundhu aarambichu ovvoru shelf-aiyum paaru" nu steps irukkum. Antha **steps** thaan **algorithm**.' },
+      { t: 'terms', items: [
+        { term: 'Data Structure', meaning: 'Data-ai computer memory-la store panni, organise panra oru murai. Example: array, stack, queue, linked list, tree.' },
+        { term: 'Algorithm', meaning: 'Oru problem-ai solve panna finite (mudiyakkoodiya) steps-oda list.' },
+        { term: 'Linear data structure', meaning: 'Data oru straight line-la, ore sequence-la irukkum. Array, linked list, stack, queue.' },
+        { term: 'Non-linear data structure', meaning: 'Data hierarchy / network-ah irukkum, oru straight line illa. Tree, graph.' },
+      ] },
+      { t: 'table', caption: 'Algorithm vs Data Structure', head: ['', 'Data Structure', 'Algorithm'], rows: [['Enna?', 'Data-ai store/organise panra murai', 'Problem solve panra steps'], ['Example', 'Array of marks', 'Marks-la maximum kandupidikkum steps'], ['Kelvi', '"Data eppadi vaikkanum?"', '"Velai eppadi seiyanum?"']] },
+      { t: 'viz', viz: 'array', caption: 'Array: mudhal data structure. Boxes-ai click pannungal.' },
+      { t: 'mistakes', items: ['"Data structure-um algorithm-um ore vishayam" nu ninaikkuradhu. Illa: adhu data-ai vaikkira murai; idhu steps.', 'Non-linear-na "straight-ah illa-na error" nu ninaikkuradhu. Illa, hierarchy-ya irukkum (tree).'] },
+      { t: 'check', questionId: 'm1-q1' },
+    ],
+    summary: ['Data structure = data-ai organise panra murai.', 'Algorithm = finite steps to solve a problem.', 'Linear: array, list, stack, queue. Non-linear: tree, graph.', 'Seri-yaana data structure + nalla algorithm = fast programs.'],
+  },
+  {
+    id: 'm1-l2',
+    moduleId: 'm1',
+    title: 'Abstract Data Types (ADT)',
+    minutes: 20,
+    objectives: ['Explain what an ADT is and why it hides implementation', 'Give examples of ADTs', 'Tell ADT apart from a data structure'],
+    source: 'Lecture 2 (Data Abstraction, ADTs)',
+    blocks: [
+      { t: 'analogy', title: 'TV remote', body: 'TV remote-la **volume up, channel change, power** buttons irukku. Remote ullukku circuits eppadi velai seiyudhunu namakku theriya vendaam; **buttons (operations)** mattum theriyum. Adhaan **abstraction**: "enna seiyalam" nu theriyum, "eppadi seiyudhu" nu thevai illa.' },
+      { t: 'text', body: '**Abstract Data Type (ADT)** = data + andha data-mela seiyalaam operations-oda list. Implementation (code eppadi ezhudhirukku) maraichu vechirukkum.\n\nExample: **Stack** ADT-ku operations: `push`, `pop`, `peek`, `isEmpty`. Idhai array vachum implement pannalaam, linked list vachum pannalaam. Use panravanukku rendum same maadhiri thaan.' },
+      { t: 'terms', items: [
+        { term: 'ADT', meaning: 'Data + operations definition. Implementation-ai pathi sollaadhu.' },
+        { term: 'Data abstraction', meaning: 'Data-ku enna operations-nu define panni, eppadi implement pannirukkunu maraikkuradhu.' },
+        { term: 'Access procedures', meaning: 'ADT-oda data-mela seiyum operations (push, pop, add, remove).' },
+      ] },
+      { t: 'table', caption: 'Common ADTs (lecture-la vandhavai)', head: ['ADT', 'Mukkiya operations', 'Rule'], rows: [['Stack', 'push, pop, peek, isEmpty', 'LIFO'], ['Queue', 'enqueue, dequeue, isEmpty', 'FIFO'], ['List', 'add, remove, get, size', 'Ordered, index-ah access'], ['Set / Dictionary', 'add, contains, remove', 'Duplicates illa / key-value']] },
+      { t: 'code', caption: 'Java interface = ADT-ai Java-la solra murai', code: 'interface IntStack {\n    void push(int x);\n    int pop();\n    boolean isEmpty();\n}\n\nclass ArrayIntStack implements IntStack {\n    private int[] data = new int[10];\n    private int top = -1;\n\n    public void push(int x) { data[++top] = x; }\n    public int pop() { return data[top--]; }\n    public boolean isEmpty() { return top == -1; }\n}\n\npublic class Main {\n    public static void main(String[] args) {\n        IntStack s = new ArrayIntStack();\n        s.push(5);\n        s.push(9);\n        System.out.println(s.pop());\n        System.out.println(s.isEmpty());\n    }\n}', lines: [
+        '`interface IntStack` – operations-ai mattum solrom (ADT). Code body illa.',
+        '`class ArrayIntStack implements IntStack` – antha ADT-ai array vachu implement panrom (data structure).',
+        '`IntStack s = new ArrayIntStack();` – nammuku "stack" mattum thaan therinjiruku, array thevai illa.',
+      ], output: '9\nfalse' },
+      { t: 'simpler', body: 'ADT = **menu card**. Enna kidaikkum (operations) nu sollum. Samayal arai-la eppadi samaikkaraanga (implementation) nu sollaadhu.' },
+      { t: 'mistakes', items: ['ADT-um data structure-um same nu ninaikkuradhu: ADT = "enna", data structure = "eppadi".', 'ADT-ku oru kattaayam implementation-ae irukkum nu ninaikkuradhu.'] },
+      { t: 'check', questionId: 'm1-q4' },
+    ],
+    summary: ['ADT = data + operations, implementation maraivu.', 'Examples: Stack, Queue, List.', 'Oru ADT-ai pala vidhamaa implement pannalaam.', 'Java interface ADT-ai represent panna nalla vazhi.'],
+  },
+  {
+    id: 'm1-l3',
+    moduleId: 'm1',
+    title: 'Solving Problems with Algorithms & Pseudocode',
+    minutes: 20,
+    objectives: ['Break a problem into steps', 'Write simple pseudocode', 'Turn pseudocode into Java'],
+    source: 'Lecture 11, Sample Paper 2021 Q1 (iii, iv)',
+    blocks: [
+      { t: 'analogy', title: 'Chai podura steps', body: 'Chai podurathu oru algorithm: 1) paal kaachu 2) tea thool podu 3) sakkarai podu 4) vadi. Steps order mukkiyam. Mela keezha maathinaa chai kedum.' },
+      { t: 'text', body: 'Oru nalla algorithm-ku **properties** irukkum:\n\n**Finite** (mudivu irukkanum), **Clear / unambiguous** (ovvoru step-um theliva), **Input** (0 or more), **Output** (1 or more), **Effective** (ovvoru step-um seiya mudiyum).' },
+      { t: 'text', body: '**Pseudocode** = Java maadhiri programming language illaamal, simple English-la algorithm-ai ezhudhuradhu. Idhula syntax errors illa. Mudhalla pseudocode ezhudhi, appuram Java-vaa maathikalaam.' },
+      { t: 'code', caption: 'Pseudocode: array-la maximum kandupidi', code: 'max = first element\nfor each remaining element x\n    if x > max\n        max = x\nreturn max', snippet: true },
+      { t: 'code', caption: 'Java-la: 10 unsigned numbers-la maximum', code: 'public class Main {\n    static int findMax(int[] a) {\n        int max = a[0];\n        for (int i = 1; i < a.length; i++) {\n            if (a[i] > max) {\n                max = a[i];\n            }\n        }\n        return max;\n    }\n\n    public static void main(String[] args) {\n        int[] nums = {12, 5, 99, 3, 47, 8, 61, 0, 25, 77};\n        System.out.println(findMax(nums));\n    }\n}', lines: [
+        '`int max = a[0];` – mudhal element-ai thaan ippodhaikku maximum nu eduthukkurom.',
+        'Loop `i = 1`-la irundhu aarambikkum, ethukku-na `a[0]` already eduthachu.',
+        '`if (a[i] > max)` – periya value kidaichaa max-ai update panrom.',
+      ], output: '99' },
+      { t: 'code', caption: 'Palindrome check (while loop)', code: 'import java.util.Scanner;\n\npublic class Main {\n    static boolean isPalindrome(String s) {\n        int left = 0;\n        int right = s.length() - 1;\n        while (left < right) {\n            if (s.charAt(left) != s.charAt(right)) {\n                return false;\n            }\n            left++;\n            right--;\n        }\n        return true;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        String word = sc.next();\n        System.out.println(isPalindrome(word) ? "Palindrome" : "Not a palindrome");\n    }\n}', lines: [
+        'Palindrome = munnadiyum pinnadiyum same-ah padikkara word (example: civic).',
+        '`left` start-la, `right` end-la. Rendu pakkathula irundhu naduvai nokki varrom.',
+        'Ethavadhu oru jodi match aagala-na udane `false`.',
+        'Ellam match-na `true`.',
+      ], output: '(Input: civic)  →  Palindrome' },
+      { t: 'mistakes', items: ['Code-ai udane ezhudha aarambikkuradhu. Mudhalla steps-ai ezhudhunga.', 'Loop-ai `i = 0`-la start pannittu `a[0]`-oda compare panradhu (work seiyum, aana oru extra step).', 'Empty array-ku `a[0]` access panradhu error tharum. Input rules-ai gavaninga.'] },
+      { t: 'check', questionId: 'm1-q5' },
+    ],
+    summary: ['Algorithm: finite, clear, input, output, effective.', 'Pseudocode = plain-English steps.', 'Problem-ai chinna steps-aa udai.', 'Max-find and palindrome: rendu mukkiya patterns.'],
+  },
+]
