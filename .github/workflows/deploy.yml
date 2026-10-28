@@ -26,6 +26,15 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - name: Check AI Worker URL
+        run: |
+          if [ -z "$VITE_AI_WORKER_URL" ]; then
+            echo "::warning title=VITE_AI_WORKER_URL is empty::AI evaluation and the chatbot will be disabled in this build. Add it as a repository VARIABLE (Settings > Secrets and variables > Actions > Variables)."
+          else
+            echo "VITE_AI_WORKER_URL is set (${#VITE_AI_WORKER_URL} characters)."
+          fi
+        env:
+          VITE_AI_WORKER_URL: ${{ vars.VITE_AI_WORKER_URL }}
       - name: Build
         run: npm run build
         env:
