@@ -235,3 +235,55 @@ describe('chatbot reply handling', () => {
     expect(splitReply('')).toEqual([])
   })
 })
+
+import { asksAboutProgress, buildProfile, describeProfile, MAX_PROFILE_CHARS } from '../src/lib/studentContext'
+import { mcqsOf } from '../src/content'
+
+describe('student profile for the chatbot', () => {
+  it('describes a brand new student without inventing data', () => {
+    const pr = buildProfile(emptyProgress())
+    expect(pr.empty).toBe(true)
+    expect(pr.weakModules).toEqual([])
+    expect(pr.summary).toContain('New student')
+    expect(pr.nextLesson?.id).toBe('m0-l1')
+  })
+  it('finds weak topics only after enough attempts', () => {
+    const ids = mcqsOf('m5').slice(0, 4).map((q) => q.id)
+    let p = emptyProgress()
+    for (const id of ids.slice(0, 2)) p = recordAnswer(p, id, false)
+    expect(buildProfile(p).weakModules).toEqual([]) // only 2 attempts
+    p = recordAnswer(p, ids[2], false)
+    p = recordAnswer(p, ids[3], true)
+    const pr = buildProfile(p)
+    expect(pr.weakModules[0]).toMatchObject({ id: 'm5', accuracy: 25, attempts: 4 })
+    expect(pr.repeatedMisses.length).toBe(3)
+    expect(pr.summary).toContain('Weak topics')
+  })
+  it('reports missing foundations and unfinished modules', () => {
+    let p = completeLesson(emptyProgress(), 'm5-l1', 'Stack')
+    const pr = buildProfile(p)
+    expect(pr.gaps.some((g) => g.id === 'm2')).toBe(true) // working in Stacks, Arrays prerequisite untouched
+    expect(pr.unfinished.some((u) => u.id === 'm5')).toBe(true)
+    p = recordShortAnswer(p, 'm5-sa1', 1)
+    expect(buildProfile(p).weakShortAnswers.length).toBe(1)
+  })
+  it('flags exercises that were started but not solved', () => {
+    const p = { ...emptyProgress(), savedCode: { 'm0-e1': 'class Main { /* my attempt */ }' } }
+    expect(buildProfile(p).strugglingExercises).toContain('Sum of 1 to n')
+    expect(buildProfile(completeExercise(p, 'm0-e1', 'x')).strugglingExercises).toEqual([])
+  })
+  it('never exceeds the size the Worker accepts and contains no saved code', () => {
+    let p = emptyProgress()
+    for (const q of mcqs) { p = recordAnswer(p, q.id, false); p = recordAnswer(p, q.id, false) }
+    p = { ...p, savedCode: { 'm0-e1': 'SECRET_SOURCE_CODE' } }
+    const pr = buildProfile(p)
+    expect(pr.summary.length).toBeLessThanOrEqual(MAX_PROFILE_CHARS)
+    expect(pr.summary).not.toContain('SECRET_SOURCE_CODE')
+  })
+  it('recognises progress questions in Tanglish and English', () => {
+    expect(asksAboutProgress('Enna topics-la naan weak-aa irukken?')).toBe(true)
+    expect(asksAboutProgress('what should I study next')).toBe(true)
+    expect(asksAboutProgress('stack na enna')).toBe(false)
+    expect(describeProfile(buildProfile(emptyProgress()))).toContain('start pannala')
+  })
+})

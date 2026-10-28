@@ -4,10 +4,18 @@ import { Loader2, MessageCircle, Send, Trash2, X } from 'lucide-react'
 import { lessonById, lessons, mcqs } from '../content'
 import { askChat, chatConfigured, MAX_CHAT_CHARS, splitReply, type ChatMsg } from '../lib/chat'
 import { buildIndex, searchIndex, type LocalHit } from '../lib/localChat'
+import { asksAboutProgress, buildProfile, describeProfile } from '../lib/studentContext'
+import { useProgress } from '../state/ProgressContext'
 import { CodeBlock } from './CodeBlock'
 import { Btn } from './Ui'
 
-const SUGGESTIONS = ['Stack na enna? Simple-aa sollunga', 'Binary search eppadi velai seiyum?', 'Array index 0-la yen start aagudhu?']
+const SUGGESTIONS_PERSONAL = ['Enna topics-la naan weak-aa irukken?', 'Naan edhula struggle panren? Eppadi improve pannalaam?', 'Adutha enna study panna?']
+const SUGGESTIONS_GENERAL = ['Stack na enna? Simple-aa sollunga', 'Binary search eppadi velai seiyum?', 'Array index 0-la yen start aagudhu?']
+const PERSONALISE_KEY = 'dsa-lab:chat-personalise'
+
+const readPersonalise = (): boolean => {
+  try { return localStorage.getItem(PERSONALISE_KEY) !== 'off' } catch { return true }
+}
 
 /** Inline **bold** and `code` (also code inside bold). Rendered as React nodes, never as HTML. */
 function inline(text: string, keyBase: string): ReactNode[] {
@@ -80,6 +88,8 @@ export function ChatBot() {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [personalise, setPersonalise] = useState(readPersonalise)
+  const { p } = useProgress()
   const loc = useLocation()
   const endRef = useRef<HTMLDivElement>(null)
   const abort = useRef<AbortController | null>(null)
@@ -101,7 +111,13 @@ export function ChatBot() {
     setMsgs(history)
     setText('')
     setError('')
+    // Computed from the student's own browser data at the moment of asking, so it is always current.
+    const profile = personalise ? buildProfile(p) : null
     if (!ai) {
+      if (profile && asksAboutProgress(content)) {
+        setMsgs([...history, { role: 'assistant', content: describeProfile(profile) }])
+        return
+      }
       // Offline mode: search the course notes. No network, no AI, nothing invented.
       indexRef.current ??= buildIndex(lessons, mcqs)
       const { hits } = searchIndex(indexRef.current, content)
@@ -113,7 +129,7 @@ export function ChatBot() {
     }
     setBusy(true)
     abort.current = new AbortController()
-    const r = await askChat(history.map(({ role, content }) => ({ role, content })), lessonTitle, abort.current.signal)
+    const r = await askChat(history.map(({ role, content }) => ({ role, content })), lessonTitle, profile?.summary ?? '', abort.current.signal)
     setBusy(false)
     if (r.ok) setMsgs([...history, { role: 'assistant', content: r.reply }])
     else setError(r.message)
@@ -157,7 +173,7 @@ export function ChatBot() {
           <div className="space-y-2">
             <p className="text-sm">DSA, Java pathi enna doubt irundhaalum kelunga. Naan Tanglish-la simple-aa explain panren.</p>
             <ul className="flex flex-wrap gap-2">
-              {SUGGESTIONS.map((s) => (
+              {[...(personalise ? SUGGESTIONS_PERSONAL : []), ...SUGGESTIONS_GENERAL].map((s) => (
                 <li key={s}><button type="button" onClick={() => send(s)} className="rounded-full border border-line px-3 py-1.5 text-left text-xs hover:border-brand">{s}</button></li>
               ))}
             </ul>
@@ -181,6 +197,19 @@ export function ChatBot() {
           />
           <Btn type="submit" disabled={busy || text.trim() === ''} aria-label="Send question"><Send size={16} aria-hidden /></Btn>
         </div>
+        <label className="mt-2 flex cursor-pointer items-start gap-2 text-xs">
+          <input
+            type="checkbox" className="mt-0.5 h-4 w-4 accent-[var(--c-brand)]" checked={personalise}
+            onChange={(e) => {
+              setPersonalise(e.target.checked)
+              try { localStorage.setItem(PERSONALISE_KEY, e.target.checked ? 'on' : 'off') } catch { /* storage unavailable: setting lasts until reload */ }
+            }}
+          />
+          <span>
+            <span className="font-semibold">Personalise with my progress.</span>{' '}
+            <span className="text-muted">{ai ? 'Sends a short summary (weak topics, unfinished lessons, scores; no name or code) with each question so answers fit you.' : 'Lets me answer "where am I weak?" from your progress.'}</span>
+          </span>
+        </label>
         <p className="mt-1 text-[11px] text-muted">{ai ? 'AI answers can be wrong. Check with your lesson notes. Do not share personal details.' : 'Answers come straight from the course notes.'}</p>
       </form>
     </section>

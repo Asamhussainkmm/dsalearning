@@ -24,14 +24,14 @@ export function splitReply(text: string): { code: boolean; body: string }[] {
   return parts.filter((p) => p.body.trim().length > 0)
 }
 
-export async function askChat(history: ChatMsg[], lesson: string, signal?: AbortSignal): Promise<ChatOutcome> {
+export async function askChat(history: ChatMsg[], lesson: string, profile = '', signal?: AbortSignal): Promise<ChatOutcome> {
   if (!WORKER) return { ok: false, message: 'The chatbot is not enabled in this build (no AI Worker URL was configured).' }
   const messages = history.slice(-MAX_HISTORY).map((m) => ({ role: m.role, content: m.content.slice(0, MAX_CHAT_CHARS) }))
   try {
     const res = await fetch(`${WORKER}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, lesson: lesson.slice(0, 120) }),
+      body: JSON.stringify({ messages, lesson: lesson.slice(0, 120), profile: profile.slice(0, 1500) }),
       signal: signal ?? AbortSignal.timeout(30_000),
     })
     if (res.status === 429) return { ok: false, message: 'Too many questions in a short time. Wait a minute and ask again.' }
