@@ -31,13 +31,38 @@ function inline(text: string, keyBase: string): ReactNode[] {
 function ChatText({ text }: { text: string }) {
   const blocks: ReactNode[] = []
   let list: { ordered: boolean; items: string[] } | null = null
+  let table: string[][] | null = null
   const flush = () => {
-    if (!list) return
-    const Tag = list.ordered ? 'ol' : 'ul'
-    blocks.push(<Tag key={`l${blocks.length}`} className={`my-2 space-y-1 pl-6 ${list.ordered ? 'list-decimal' : 'list-disc'}`}>{list.items.map((it, i) => <li key={i}>{inline(it, `li${blocks.length}-${i}`)}</li>)}</Tag>)
-    list = null
+    if (list) {
+      const Tag = list.ordered ? 'ol' : 'ul'
+      blocks.push(<Tag key={`l${blocks.length}`} className={`my-2 space-y-1 pl-6 ${list.ordered ? 'list-decimal' : 'list-disc'}`}>{list.items.map((it, i) => <li key={i}>{inline(it, `li${blocks.length}-${i}`)}</li>)}</Tag>)
+      list = null
+    }
+    if (table) {
+      const [head, ...rows] = table as string[][]
+      const k = `t${blocks.length}`
+      blocks.push(
+        <div key={k} className="my-3 overflow-x-auto rounded-xl border border-line">
+          <table className="w-full min-w-[20rem] text-left text-sm">
+            <thead className="bg-surface"><tr>{head.map((c, i) => <th key={i} scope="col" className="px-3 py-2 font-semibold">{inline(c, `${k}h${i}`)}</th>)}</tr></thead>
+            <tbody>{rows.map((r, ri) => <tr key={ri} className="border-t border-line align-top">{r.map((c, ci) => <td key={ci} className="px-3 py-2">{inline(c, `${k}r${ri}c${ci}`)}</td>)}</tr>)}</tbody>
+          </table>
+        </div>,
+      )
+      table = null
+    }
   }
   text.split('\n').forEach((line, n) => {
+    // Markdown table rows: | a | b |  (the |---|---| separator row is dropped; the first row is the header)
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      const cells = line.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim())
+      if (list) flush()
+      if (cells.every((c) => /^:?-{2,}:?$/.test(c))) return
+      table ??= []
+      table.push(cells)
+      return
+    }
+    if (table) flush()
     const bullet = /^\s*[-*•]\s+(.*)$/.exec(line)
     const num = /^\s*\d+[.)]\s+(.*)$/.exec(line)
     if (bullet || num) {
