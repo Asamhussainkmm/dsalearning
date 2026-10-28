@@ -119,6 +119,7 @@ function parseChat(v: unknown): ChatRequest | null {
 const CHAT_PROMPT = `You are "DSA Buddy", a friendly tutor inside a Data Structures & Algorithms course for HNDIT (Sri Lanka) beginners who may have never programmed.
 Rules:
 - Reply in Tanglish: Tamil sentence structure written in English letters, keeping technical words in English (array, stack, loop, index, O(n)). Never use Tamil script. If the student writes in plain English and clearly wants English, you may use simple English, but default to Tanglish.
+- Do not start replies with greetings such as "Vanakkam" or "Hello"; go straight to the answer.
 - Explain like to a beginner: a real-life analogy first, then the idea, then a tiny Java example if useful. Keep answers short (under about 180 words) and friendly.
 - All code must be Java. Put code in fenced blocks. Never claim you ran code; if you state an output, work it out carefully step by step.
 - Topics: Java basics, arrays, ArrayList and generics, linked lists, stacks, queues, trees and BST, Big O, searching, sorting. For anything unrelated (other subjects, personal data, jokes, opinions), politely say you can only help with this course and suggest a related DSA question.
@@ -155,6 +156,43 @@ function rateLimited(ip: string): boolean {
   return arr.length > RATE_LIMIT
 }
 
+// Models tried in order when the configured one is unavailable to this Groq account (Groq lists these as production models).
+const FALLBACK_MODELS = ['llama-3.3-70b-versatile', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.1-8b-instant']
+let workingModel: string | null = null // remembered per isolate so we do not retry dead models on every request
+
+/** 404/403 or a "model ..." 400 mean "this model is not usable for you": move on to the next one. */
+const isModelProblem = (status: number, body: string) =>
+  status === 404 || status === 403 || (status === 400 && /model/i.test(body))
+
+/**
+ * Calls Groq, falling back across models. Reasoning models (gpt-oss) spend part of the token budget on thinking,
+ * so they get a larger limit and low reasoning effort. Returns the first response that is not a model problem.
+ */
+async function callGroq(env: Env, payload: Record<string, unknown>, timeoutMs: number): Promise<Response> {
+  const candidates = [...new Set([workingModel, env.GROQ_MODEL, ...FALLBACK_MODELS].filter((m): m is string => !!m))]
+  let last: Response | null = null
+  for (const model of candidates) {
+    const reasoning = model.startsWith('openai/gpt-oss')
+    const body = { ...payload, model, ...(reasoning ? { reasoning_effort: 'low', max_tokens: Number(payload.max_tokens) * 3 } : {}) }
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+    if (res.ok) {
+      workingModel = model
+      return res
+    }
+    const text = await res.clone().text()
+    console.error('groq_error', model, res.status, text.slice(0, 300)) // visible only in wrangler tail, never sent to the browser
+    if (!isModelProblem(res.status, text)) return res
+    if (workingModel === model) workingModel = null
+    last = res
+  }
+  return last as Response
+}
+
 async function chat(raw: string, env: Env, headers: Record<string, string>): Promise<Response> {
   let parsed: ChatRequest | null = null
   try {
@@ -166,19 +204,9 @@ async function chat(raw: string, env: Env, headers: Record<string, string>): Pro
   const lesson = parsed.lesson.replace(/["\r\n]/g, ' ')
   const system = lesson ? `${CHAT_PROMPT}\nThe student is currently reading the lesson titled: "${lesson}".` : CHAT_PROMPT
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: env.GROQ_MODEL || 'llama-3.3-70b-versatile',
-        temperature: 0.4,
-        max_tokens: 700,
-        messages: [{ role: 'system', content: system }, ...parsed.messages],
-      }),
-      signal: AbortSignal.timeout(25_000),
-    })
+    const res = await callGroq(env, { temperature: 0.4, max_tokens: 700, messages: [{ role: 'system', content: system }, ...parsed.messages] }, 25_000)
     if (res.status === 429) return json({ error: 'provider_rate_limited' }, 429, headers)
-    if (!res.ok) return json({ error: 'provider_error' }, 502, headers)
+    if (!res.ok) return json({ error: 'provider_error' }, 502, headers) // never forward provider details
     const data = (await res.json()) as { choices?: { message?: { content?: string } }[] }
     const reply = data.choices?.[0]?.message?.content?.trim()
     if (!reply || reply.length > 4000) return json({ error: 'bad_model_output' }, 502, headers)
@@ -223,21 +251,15 @@ ${parsed.answer}
 </student_answer>`
 
     try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${env.GROQ_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: env.GROQ_MODEL || 'llama-3.3-70b-versatile',
-          temperature: 0.1,
-          max_tokens: 600,
-          response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: userPrompt },
-          ],
-        }),
-        signal: AbortSignal.timeout(20_000),
-      })
+      const res = await callGroq(env, {
+        temperature: 0.1,
+        max_tokens: 600,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: userPrompt },
+        ],
+      }, 25_000)
       if (res.status === 429) return json({ error: 'provider_rate_limited' }, 429, headers)
       if (!res.ok) return json({ error: 'provider_error' }, 502, headers) // never forward provider details
       const data = (await res.json()) as { choices?: { message?: { content?: string } }[] }

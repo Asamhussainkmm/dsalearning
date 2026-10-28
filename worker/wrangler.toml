@@ -6,6 +6,7 @@ compatibility_date = "2025-01-01"
 # Comma-separated list of browser origins allowed to call the Worker.
 # Replace YOUR-GITHUB-USERNAME with your GitHub Pages user. Keep localhost for local dev.
 ALLOWED_ORIGINS = "https://asamhussainkmm.github.io,http://localhost:5173,http://localhost:4173"
-GROQ_MODEL = "llama-3.3-70b-versatile"
+# First model to try. If your Groq account cannot use it, the Worker automatically tries the other current Groq models.
+GROQ_MODEL = "openai/gpt-oss-120b"
 
 # Secret (NOT stored here):  npx wrangler secret put GROQ_API_KEY

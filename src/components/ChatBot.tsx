@@ -1,13 +1,51 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Loader2, MessageCircle, Send, Trash2, X } from 'lucide-react'
 import { lessonById, lessons, mcqs } from '../content'
 import { askChat, chatConfigured, MAX_CHAT_CHARS, splitReply, type ChatMsg } from '../lib/chat'
 import { buildIndex, searchIndex, type LocalHit } from '../lib/localChat'
 import { CodeBlock } from './CodeBlock'
-import { Btn, Markup } from './Ui'
+import { Btn } from './Ui'
 
 const SUGGESTIONS = ['Stack na enna? Simple-aa sollunga', 'Binary search eppadi velai seiyum?', 'Array index 0-la yen start aagudhu?']
+
+/** Inline **bold** and `code` (also code inside bold). Rendered as React nodes, never as HTML. */
+function inline(text: string, keyBase: string): ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean).map((part, i) => {
+    const k = `${keyBase}-${i}`
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) return <strong key={k}>{inline(part.slice(2, -2), k)}</strong>
+    if (part.startsWith('`') && part.endsWith('`') && part.length > 2) return <code key={k} className="rounded bg-bg px-1 font-mono text-[0.9em]">{part.slice(1, -1)}</code>
+    return <span key={k}>{part}</span>
+  })
+}
+
+/** Paragraphs, bullet lists and numbered lists from a chat reply. */
+function ChatText({ text }: { text: string }) {
+  const blocks: ReactNode[] = []
+  let list: { ordered: boolean; items: string[] } | null = null
+  const flush = () => {
+    if (!list) return
+    const Tag = list.ordered ? 'ol' : 'ul'
+    blocks.push(<Tag key={`l${blocks.length}`} className={`my-2 space-y-1 pl-6 ${list.ordered ? 'list-decimal' : 'list-disc'}`}>{list.items.map((it, i) => <li key={i}>{inline(it, `li${blocks.length}-${i}`)}</li>)}</Tag>)
+    list = null
+  }
+  text.split('\n').forEach((line, n) => {
+    const bullet = /^\s*[-*•]\s+(.*)$/.exec(line)
+    const num = /^\s*\d+[.)]\s+(.*)$/.exec(line)
+    if (bullet || num) {
+      const ordered = !!num
+      if (list && list.ordered !== ordered) flush()
+      list ??= { ordered, items: [] }
+      list.items.push((bullet ?? num)![1])
+    } else {
+      flush()
+      const t = line.replace(/^#{1,6}\s+/, '')
+      if (t.trim()) blocks.push(<p key={`p${n}`} className="my-2">{inline(t, `p${n}`)}</p>)
+    }
+  })
+  flush()
+  return <div>{blocks}</div>
+}
 
 type Msg = ChatMsg & { hits?: LocalHit[] }
 
@@ -15,11 +53,11 @@ function Bubble({ m }: { m: Msg }) {
   const mine = m.role === 'user'
   return (
     <div className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-      <div className={`max-w-[92%] rounded-2xl px-3 py-2 text-sm ${mine ? 'bg-brand text-brand-ink' : 'border border-line bg-surface2'}`}>
+      <div className={`${mine ? 'max-w-[85%]' : 'w-full'} rounded-2xl px-4 py-3 text-[15px] leading-7 ${mine ? 'bg-brand text-brand-ink' : 'border border-line bg-surface2'}`}>
         <span className="sr-only">{mine ? 'You: ' : 'DSA Buddy: '}</span>
         {mine
           ? <p className="whitespace-pre-wrap">{m.content}</p>
-          : splitReply(m.content).map((p, i) => (p.code ? <CodeBlock key={i} code={p.body} runnable={false} caption="Java" /> : <Markup key={i} text={p.body} />))}
+          : splitReply(m.content).map((p, i) => (p.code ? <CodeBlock key={i} code={p.body} runnable={false} caption="Java" /> : <ChatText key={i} text={p.body} />))}
         {m.hits && m.hits.length > 0 && (
           <ul className="mt-2 space-y-2">
             {m.hits.map((h, i) => (
@@ -95,7 +133,7 @@ export function ChatBot() {
     <section
       role="dialog" aria-label="DSA Buddy chat"
       onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }}
-      className="fixed inset-x-2 bottom-2 z-50 flex max-h-[85vh] flex-col rounded-2xl border border-line bg-surface shadow-2xl sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-[26rem]"
+      className="fixed inset-2 z-50 flex flex-col rounded-2xl border border-line bg-surface shadow-2xl sm:inset-4 md:left-auto md:w-[min(60rem,calc(100vw-2rem))]"
     >
       <header className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
         <div>
@@ -111,13 +149,13 @@ export function ChatBot() {
         </div>
       </header>
 
-      <div className="min-h-40 flex-1 space-y-3 overflow-y-auto p-4" role="log" aria-live="polite" aria-label="Conversation">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-6" role="log" aria-live="polite" aria-label="Conversation">
         {!ai && (
           <p className="rounded-xl bg-warn-soft p-3 text-xs text-warn">Offline mode: I search this course&apos;s own notes for you. I am not an AI, so I can only answer what the lessons cover.</p>
         )}
         {msgs.length === 0 && (
           <div className="space-y-2">
-            <p className="text-sm">Vanakkam! 👋 DSA, Java pathi enna doubt irundhaalum kelunga. Naan Tanglish-la simple-aa explain panren.</p>
+            <p className="text-sm">DSA, Java pathi enna doubt irundhaalum kelunga. Naan Tanglish-la simple-aa explain panren.</p>
             <ul className="flex flex-wrap gap-2">
               {SUGGESTIONS.map((s) => (
                 <li key={s}><button type="button" onClick={() => send(s)} className="rounded-full border border-line px-3 py-1.5 text-left text-xs hover:border-brand">{s}</button></li>
